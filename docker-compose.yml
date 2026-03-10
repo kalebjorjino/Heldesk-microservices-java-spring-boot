@@ -8,7 +8,7 @@ services:
     networks:
       - helpdesk-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8761"]
+      test: ["CMD", "curl", "-f", "http://10.2.1.203:8761"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -30,7 +30,7 @@ services:
     networks:
       - helpdesk-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://config-server:8888/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -40,16 +40,16 @@ services:
     image: mysql:8.0
     container_name: mysql-db
     ports:
-      - "3307:3306"
+      - "3306:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=3Nf4rm1t3c1root5
       - MYSQL_DATABASE=helpdesk_db
     volumes:
-      - mysql-data:/var/lib/mysql
+      - ./mysql-data:/var/lib/mysql
     networks:
       - helpdesk-network
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-p$${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "mysql-db", "-p$${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -73,12 +73,15 @@ services:
   user-management-service:
     build: ./user-management-service
     container_name: user-management-service
+    ports:
+      - "8083:8083"
     depends_on:
       mysql-db:
         condition: service_healthy
       config-server:
         condition: service_healthy
     environment:
+      - JWT_SECRET=M05mNHJtMXQzYzFyb290NSUkQ2VudHJhbEluZm9ybWF0aWNhVW5pZGFkVGVjbm9sb2dpYWRlbGFJbmZvcm1hY2lvbnlDb211bmljYWNpb25lcw==
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka
     networks:
@@ -127,20 +130,7 @@ services:
     networks:
       - helpdesk-network
 
-  # --- AÑADIDO: Frontend ---
-  helpdesk-frontend:
-    build: ./helpdesk-frontend # Asegúrate de que esta carpeta exista y tenga un Dockerfile
-    container_name: helpdesk-frontend
-    ports:
-      - "5173:80" # Mapea el puerto 80 del contenedor al 5173 de tu PC
-    depends_on:
-      - api-gateway
-    networks:
-      - helpdesk-network
 
 networks:
   helpdesk-network:
     driver: bridge
-
-volumes:
-  mysql-data:
